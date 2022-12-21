@@ -65,7 +65,7 @@ func (pow *ProfOfWork) InitData(nonce int) []byte {
 	data := bytes.Join(
 		[][]byte{
 			pow.Bock.PrevHash,
-			pow.Bock.Data,
+			pow.Bock.HashTransaction(),
 			ToHex(int64(nonce)),
 			ToHex(int64(Dificulty)),
 		},
