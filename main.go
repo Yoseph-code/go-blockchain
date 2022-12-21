@@ -1,27 +1,95 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"os"
+	"runtime"
 	"strconv"
 
 	"github.com/Yoseph-code/go-blockchain/blockchain"
 )
 
-func main() {
-	chain := blockchain.InitBlockChain()
+type CommandLine struct {
+	blockchain *blockchain.BlockChain
+}
 
-	chain.AddBlock("first block afet genesis")
-	chain.AddBlock("second block afet genesis")
-	chain.AddBlock("third block afet genesis")
+func (cli *CommandLine) printUsage() {
+	fmt.Println("Usage:")
+	fmt.Println(" add -block BLOCK_DATA - add a block to the chain")
+	fmt.Println(" print - Prints the blocks in the chain")
+}
 
-	for _, block := range chain.Blocks {
+func (cli *CommandLine) validateArgs() {
+	fmt.Printf("%s \n", strconv.FormatBool(len(os.Args) < 2))
+	if len(os.Args) < 2 {
+		cli.printUsage()
+		runtime.Goexit()
+	}
+}
+
+func (cli *CommandLine) addBlock(data string) {
+	cli.blockchain.AddBlock(data)
+	fmt.Println("Block added")
+}
+
+func (cli *CommandLine) printChain() {
+	iter := cli.blockchain.Interator()
+
+	for {
+		block := iter.Next()
+
 		fmt.Printf("Previus hash: %x \n", block.PrevHash)
 		fmt.Printf("Block data: %s \n", block.Data)
 		fmt.Printf("Block hash: %x \n", block.Hash)
+		pow := blockchain.NewProf(block)
+		fmt.Printf("Pow: %s \n", strconv.FormatBool(pow.Validate()))
 		fmt.Println()
 
-		pow := blockchain.NewProf(block)
-		fmt.Printf("Pow %s \n", strconv.FormatBool(pow.Validate()))
-		fmt.Println()
+		if len(block.PrevHash) == 0 {
+			break
+		}
 	}
+}
+
+func (cli *CommandLine) Run() {
+	cli.validateArgs()
+
+	fmt.Printf("%x \n", os.Args[2:])
+	addBlockCmd := flag.NewFlagSet("add", flag.ExitOnError)
+	printChainCmd := flag.NewFlagSet("print", flag.ExitOnError)
+	addBlockData := addBlockCmd.String("block", "", "Block data")
+
+	switch os.Args[1] {
+	case "add":
+		err := addBlockCmd.Parse(os.Args[2:])
+		blockchain.Handle(err)
+	case "print":
+		err := printChainCmd.Parse(os.Args[2:])
+		blockchain.Handle(err)
+	default:
+		cli.printUsage()
+		runtime.Goexit()
+	}
+
+	if addBlockCmd.Parsed() {
+		if *addBlockData == "" {
+			addBlockCmd.Usage()
+			runtime.Goexit()
+		}
+		cli.addBlock(*addBlockData)
+	}
+
+	if printChainCmd.Parsed() {
+		cli.printChain()
+	}
+}
+
+func main() {
+	// os.Exit(0)
+	chain := blockchain.InitBlockChain()
+	// defer chain.Database.Close()
+
+	cli := CommandLine{chain}
+	cli.Run()
 }
